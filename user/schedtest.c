@@ -71,7 +71,6 @@ void run(int processes, enum SchedulerChoice sc) {
     for(int i = 0; i < processes; i++) {
         // make sure some processes are created a bit later than others
         // (don't sleep() because we don't want anyone else scheduled)
-        for(int j = 0; j < 10000000; j++) {}
         printf("Forking #%d...\n", i);
         if(fork() == 0) {
             int pid = getpid();
@@ -130,10 +129,9 @@ int main(int argc, char **argv) {
     printf("With scheduler FIFO\n");
     run(processes, FIFO);
 
-    /*
     printf("With scheduler LIFO\n");
     run(processes, LIFO);
-
+/*
     printf("With scheduler FAIR\n");
     run(processes, FAIR);
     */
