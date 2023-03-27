@@ -36,6 +36,13 @@ sys_wait(void)
 }
 
 uint64
+sys_wait_stats(void)
+{
+  uint64 pctime;
+  a
+}
+
+uint64
 sys_sbrk(void)
 {
   uint64 addr;

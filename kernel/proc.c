@@ -146,6 +146,12 @@ found:
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
   p->ctime = ticks;
+  p->stime = -1;
+  p->etime = -1;
+  p->rtime = 0;
+  //printf("pid %d start time %d\n", p->pid, p->cticks);
+  //p->start_time = ticks;
+  //printf("pid %d start time %d\n", p->pid, p->start_time);
 
   return p;
 }
@@ -378,6 +384,7 @@ exit(int status)
 
   p->xstate = status;
   p->state = ZOMBIE;
+  p->etime = ticks; 
 
   release(&wait_lock);
 
@@ -435,6 +442,19 @@ wait(uint64 addr)
   }
 }
 
+int wait_stats( int *ctime, int *stime, int *etime, int *rtime){
+	int pid = wait(0);
+	for(struct proc *p = proc; p < &proc[NPROC]; p++){
+		if(p->pid == pid){
+			*ctime = p->ctime;
+			*stime = p->stime;
+			*etime = p->etime;
+			*rtime = p->rtime;
+			return pid;
+		}
+	}
+}
+
 // Per-CPU process scheduler.
 // Each CPU calls scheduler() after setting itself up.
 // Scheduler never returns.  It loops, doing:
@@ -483,6 +503,42 @@ scheduler_fifo(struct cpu *c)
     return min_proc;
 }
 
+//lifo = last in and last out MAKE A NEW SCHEDULER
+
+struct proc*
+scheduler_lifo(struct cpu *c)
+{
+	struct proc *p;
+	int max_time = ticks;
+	struct proc *max_proc = 0;
+	for(p = proc; p < &proc[NPROC]; p++){
+		acquire(&p->lock);
+		if(p->state == RUNNABLE){
+			if(p->ctime >= max_time){
+				max_time = p->ctime;
+				max_proc = p;
+			}
+		}
+		release(&p->lock);
+	}
+	return max_proc;
+//	return 0;
+}
+
+//fair = track how long a proccess is for and picks the shortest time
+
+struct proc*
+scheduler_fair(struct cpu *c)
+{
+//	struct proc *p;
+//	int min_time = ticks;
+//	struct proc *min_proc = 0;
+
+//	return min_proc;
+	return 0;
+}
+
+
 enum SchedulerChoice scheduler_choice = RR;
 
 void set_scheduler(enum SchedulerChoice sc) {
@@ -505,6 +561,12 @@ void scheduler(void) {
             case FIFO:
                 p = scheduler_fifo(c);
                 break;
+            case LIFO:
+                p = scheduler_lifo(c);
+                break;
+	    case FAIR:
+		p = scheduler_fair(c);
+		break;
             default:
                 p = scheduler_rr(c, last_p);
         }
@@ -516,9 +578,14 @@ void scheduler(void) {
                 // to release its lock and then reacquire it
                 // before jumping back to us.
                 p->state = RUNNING;
+		if(p->stime == -1){
+			p->stime = ticks;
+		}
                 c->proc = p;
-                swtch(&c->context, &p->context);
-
+                int now = ticks;
+		swtch(&c->context, &p->context);
+		int then = ticks;
+		p->rtime += (then - now);
                 // Process is done running for now.
                 // It should have changed its p->state before coming back.
                 c->proc = 0;

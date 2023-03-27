@@ -23,6 +23,7 @@ char* sbrk(int);
 int sleep(int);
 int uptime(void);
 void set_scheduler(enum SchedulerChoice);
+int wait_stats(int*, int*, int*, int*);
 
 // ulib.c
 int stat(const char*, struct stat*);
